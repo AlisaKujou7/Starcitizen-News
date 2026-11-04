@@ -56,10 +56,11 @@ def test_summary_cleans_text(title, text, expected):
     "title,text,expected",
     [
         ("Roadmap Roundup - October 21, 2026", "Roadmap Roundup Hello everyone!\n\nEvery two weeks, we explain changes.", "Every two weeks, we explain changes."),
+        ("Roadmap Roundup - October 21, 2026", "Roadmap Roundup Every two weeks, we explain changes.", "Every two weeks, we explain changes."),
         ("This Week", "This Week xē'suelen nyahyan, hello everyone,\nLast week was busy.", "Last week was busy."),
         ("Winners", "The Discover the ship Community Highlights View more on Community Hub By Results\n\nWe have a CHAMPION!", "We have a CHAMPION!"),
     ],
-    ids=["dated-title-and-greeting", "greeting-after-name", "web-menu-line"],
+    ids=["dated-title-and-greeting", "dated-title-only", "greeting-after-name", "web-menu-line"],
 )
 def test_summary_removes_clutter_seen_in_real_articles(title, text, expected):
     from bot.feeds import sc_commlink
