@@ -5,7 +5,7 @@ role_mention: "" # for example "<@&ROLE_ID>" to ping one role
 
 sources:
   sc_commlink: https://api.star-citizen.wiki/api/comm-links
-  sc_status: https://status.robertsspaceindustries.com/index.xml
+  sc_status: https://status.robertsspaceindustries.com/wrong.xml
 
 feeds:
   sc_commlink: { enabled: true, webhook: SC_WEBHOOK }
