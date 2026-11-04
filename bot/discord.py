@@ -28,9 +28,10 @@ def build_embed(item):
     embed = {
         "title": item.title[:MAX_TITLE],
         "url": item.url,
-        "description": item.description[:MAX_DESCRIPTION],
         "color": COLORS[item.kind],
     }
+    if item.description:
+        embed["description"] = item.description[:MAX_DESCRIPTION]
     if item.timestamp:
         embed["timestamp"] = item.timestamp.isoformat()
     if item.image:

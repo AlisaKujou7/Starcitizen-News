@@ -18,17 +18,58 @@ def test_commlink_parses_real_fixture():
     assert first.kind == "commlink"
     assert first.title == "This Week in Star Citizen"
     assert first.url == "https://robertsspaceindustries.com/en/comm-link/transmission/21431-This-Week-In-Star-Citizen"
-    assert "Transmission" in first.description
+    assert first.description.startswith("xē'suelen nyahyan, hello everyone,\nLast week, Alpha 4.10.3")
+    assert "หมวด" not in first.description
+    assert "วันที่" not in first.description
     assert first.timestamp == datetime(2026, 11, 2, 20, 0, tzinfo=timezone.utc)
     assert first.image is None  # the cover comes from the article page, only when an item is about to be sent
 
 
-def test_commlink_thai_time():
+def test_summary_from_real_fixture_drops_markup_and_repeated_title():
     from bot.feeds import sc_commlink
 
     items = sc_commlink.parse(json.loads(fixture_bytes("commlink.json")), TZ)
-    first = next(i for i in items if i.id == "21431")
-    assert "2026-11-03 03:00" in first.description  # 20:00 UTC is 03:00 next day in UTC+7
+    jump = next(i for i in items if i.id == "21427")
+    assert jump.description.startswith("ISSUE: 14 05")
+
+
+@pytest.mark.parametrize(
+    "title,text,expected",
+    [
+        ("Day of the Vara 2956 | Star Citizen", "Heap-Thumbnail_Day_Of_The_Vara SOMETHING STIRS IN THE BLACK\n\n\n\nFrozen pilots.", "SOMETHING STIRS IN THE BLACK\nFrozen pilots."),
+        ("Digital Goodies Pack | Star Citizen", "SC_DigitalGoodiesBK-Copy RSI_Top_Banner LEGACY. CELEBRATION.\n\nThe year-long event.", "LEGACY. CELEBRATION.\nThe year-long event."),
+        ("Promo", "h2 h3 Promo\n\n\nWhether you are celebrating.", "Whether you are celebrating."),
+        ("Star Citizen | RSI Discovery Month", "RSI Discovery Month Starts now.", "Starts now."),
+        ("Plain", "Nothing to remove here.", "Nothing to remove here."),
+    ],
+    ids=["file-token", "many-tokens", "markup-and-title", "site-name-in-title", "plain"],
+)
+def test_summary_cleans_text(title, text, expected):
+    from bot.feeds import sc_commlink
+
+    assert sc_commlink.summarize(text, title) == expected
+
+
+def test_summary_is_limited_at_a_word_boundary():
+    from bot.feeds import sc_commlink
+
+    summary = sc_commlink.summarize("word " * 200, "Title")
+    assert len(summary) <= 300
+    assert summary.endswith("word…")
+
+
+@pytest.mark.parametrize("text", [None, "", "   ", "h2 h3", "Only_File_Token"], ids=["none", "empty", "spaces", "markup", "token"])
+def test_summary_empty_when_nothing_remains(text):
+    from bot.feeds import sc_commlink
+
+    assert sc_commlink.summarize(text, "Title") == ""
+
+
+def test_commlink_without_text_has_empty_description():
+    from bot.feeds import sc_commlink
+
+    item = sc_commlink.parse(json.loads(commlink_payload([5])), TZ)[0]
+    assert item.description == ""
 
 
 def test_commlink_without_image_has_none():

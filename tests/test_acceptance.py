@@ -123,11 +123,6 @@ def test_fr02_each_enabled_feed_is_fetched(bot, server):
     assert len(server.gets("/status")) == 1
 
 
-def test_fr02_commlink_request_asks_for_images(bot, server):
-    bot.run()
-    assert "include=images" in server.gets("/commlink")[0]["full_path"]
-
-
 def test_fr08_more_than_threshold_is_one_message(bot, server):
     server.route("/commlink", (200, {}, commlink_payload([100, 101])))
     bot.run()
@@ -367,6 +362,36 @@ def test_fr13_dry_run_shows_the_cover(bot, server):
     result = bot.run("--dry-run", webhook=None)
     assert COVER in result.stdout
     assert server.all_posts() == []
+
+
+def test_fr14_card_shows_summary_instead_of_category_and_date(bot, server):
+    bot.run()
+    bot.forget("sc_commlink", LATEST_ID)
+    result = bot.run()
+    assert result.returncode == 0, result.stderr
+    embed = json.loads(server.posts()[0]["body"])["embeds"][0]
+    assert embed["description"].startswith("xē'suelen nyahyan")
+    assert "หมวด" not in embed["description"]
+    assert "วันที่" not in embed["description"]
+    assert embed["timestamp"].startswith("2026-11-02T20:00:00")
+
+
+def test_fr14_article_without_text_still_sends(bot, server):
+    server.route("/commlink", (200, {}, commlink_payload([100])))
+    bot.run()
+    server.route("/commlink", (200, {}, commlink_payload([101, 100])))
+    result = bot.run()
+    assert result.returncode == 0, result.stderr
+    embed = json.loads(server.posts()[0]["body"])["embeds"][0]
+    assert embed["title"] == "Article 101"
+    assert "description" not in embed
+
+
+def test_fr14_status_card_is_unchanged(bot, server):
+    bot.run()
+    bot.forget("sc_status", STATUS_ID)
+    bot.run()
+    assert json.loads(server.posts()[0]["body"])["embeds"][0]["description"] == "สถานะ: Resolved\nเวลาเริ่ม: 2026-10-21 21:30 น."
 
 
 def test_d2_keepalive_check_command(bot):

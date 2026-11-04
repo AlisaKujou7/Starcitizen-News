@@ -35,6 +35,15 @@ def test_live_article_page_has_a_cover():
     assert cover and cover.startswith("https://")
 
 
+def test_live_latest_article_has_a_summary():
+    from bot.feeds import sc_commlink
+
+    items = sc_commlink.fetch(cfg()["sources"]["sc_commlink"], "Asia/Bangkok")
+    articles = [i for i in items if not i.title.startswith("R-PU-")]
+    assert articles[0].description
+    assert len(articles[0].description) <= 300
+
+
 def test_live_status_parses():
     from bot import discord
     from bot.feeds import sc_status

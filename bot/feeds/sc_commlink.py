@@ -4,13 +4,36 @@ import re
 import time
 from datetime import datetime
 
-from bot.feeds import FeedError, Item, format_local, request_with_retry
+from bot.feeds import FeedError, Item, request_with_retry
 
 PAGE_SIZE = 30
 COVER_BUDGET = 60
+MAX_SUMMARY = 300
+MARKUP = re.compile(r"h[1-6]", re.IGNORECASE)
+SITE_NAME = re.compile(r"\s*\|\s*Star Citizen\s*$|^\s*Star Citizen\s*\|\s*", re.IGNORECASE)
 META_TAG = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
 OG_IMAGE = re.compile(r"""property\s*=\s*["']og:image["']""", re.IGNORECASE)
 CONTENT = re.compile(r"""content\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE)
+
+
+def summarize(text, title):
+    """The opening of an article, without leftover file names, markup or the repeated title."""
+    if not isinstance(text, str):
+        return ""
+    lines = []
+    for line in text.splitlines():
+        words = [w for w in line.split() if "_" not in w and not MARKUP.fullmatch(w)]
+        if words:
+            lines.append(" ".join(words))
+    base = SITE_NAME.sub("", title)
+    if lines and lines[0].lower().startswith(base.lower()):
+        lines[0] = lines[0][len(base):].strip()
+        if not lines[0]:
+            lines.pop(0)
+    summary = "\n".join(lines)
+    if len(summary) > MAX_SUMMARY:
+        summary = summary[:MAX_SUMMARY - 1].rsplit(None, 1)[0] + "…"
+    return summary
 
 
 def parse(body, tz):
@@ -23,9 +46,9 @@ def parse(body, tz):
             item_id, title, url = row["id"], row["title"], row["rsi_url"]
             created = row.get("created_at")
             moment = datetime.fromisoformat(created) if created else None
+            text = (row.get("translations") or {}).get("en_EN")
         except (KeyError, TypeError, ValueError, AttributeError) as exc:
             raise FeedError(f"sc_commlink: รูปแบบข้อมูลเปลี่ยน ({type(exc).__name__})") from None
-        channel = row.get("channel") or "ไม่ระบุ"
         items.append(
             Item(
                 id=str(item_id),
@@ -33,7 +56,7 @@ def parse(body, tz):
                 kind="commlink",
                 title=title,
                 url=url,
-                description=f"หมวด: {channel}\nวันที่: {format_local(moment, tz)}",
+                description=summarize(text, title),
                 timestamp=moment,
                 image=None,
             )
@@ -68,7 +91,7 @@ def add_covers(items, budget=COVER_BUDGET, clock=time.monotonic):
 
 def fetch(url, tz):
     response = request_with_retry(
-        "GET", url, params={"page[size]": PAGE_SIZE, "include": "images"}, headers={"Accept": "application/json"}
+        "GET", url, params={"page[size]": PAGE_SIZE}, headers={"Accept": "application/json"}
     )
     try:
         body = response.json()

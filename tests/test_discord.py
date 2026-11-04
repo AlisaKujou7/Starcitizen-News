@@ -33,6 +33,15 @@ def test_embed_commlink_fields():
     assert embed["image"] == {"url": "https://example.test/i.jpg"}
 
 
+def test_embed_without_description_leaves_it_out():
+    from bot import discord
+
+    embed = discord.build_embed(make_item(description=""))
+    assert "description" not in embed
+    assert embed["title"] == "Title 1"
+    assert embed["timestamp"].startswith("2026-11-02T20:00:00")
+
+
 def test_embed_status_fields():
     from bot import discord
 

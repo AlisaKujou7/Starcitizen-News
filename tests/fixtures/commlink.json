@@ -21,7 +21,10 @@
       "links_count": 7,
       "comment_count": 0,
       "created_at": "2026-11-02T20:00:00+00:00",
-      "created_at_human": "1 day ago"
+      "created_at_human": "1 day ago",
+      "translations": {
+        "en_EN": "This Week in Star Citizen xē'suelen nyahyan, hello everyone,\nLast week, Alpha 4.10.3 opened to all waves in the PTU as we continued preparing for its upcoming release. As Vanduul attacks escalate across Nyx, the new InterSec Defense Solutions missions will put your combat skills to the test! We want to extend a huge thank you to everyone who jumped into the PTU over the weekend to help our teams test the latest update. We’re now reviewing the data and your reports as we work through the final improvements ahead of release. If you haven’t already, check out the latest PTU Patch Notes and share "
+      }
     },
     {
       "id": 21427,
@@ -44,7 +47,10 @@
       "links_count": 1,
       "comment_count": 0,
       "created_at": "2026-10-30T19:00:00+00:00",
-      "created_at_human": "4 days ago"
+      "created_at_human": "4 days ago",
+      "translations": {
+        "en_EN": "h2 h3 Jump Point Now Available! ISSUE: 14 05 – Constellation of the Heart Attention, Subscribers: The October 2026 issue of Jump Point is now available in the Subscriber section of your account.\n\nThis issue goes behind the scenes of the latest RSI releases, the all-new Constellation Mk V Centaurus and its diminutive sister ship, the Skylark, and embraces spooky season with a chilling new short story from the Narrative team.\n\nInterested in becoming a Subscriber? Learn more\n\n\n\n\n\n\n\nJump Point Now Available!ISSUE: 14 05 – Constellation of the HeartAttention, Subscribers: The October 2026 issue of "
+      }
     }
   ],
   "meta": {
