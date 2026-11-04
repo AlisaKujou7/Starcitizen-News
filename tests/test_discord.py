@@ -191,6 +191,61 @@ def test_send_error_on_refused_connection_has_no_url(monkeypatch):
     assert "secret" not in repr(err.value.__cause__)
 
 
+def buttons(payload):
+    return [button for row in payload.get("components", []) for button in row["components"]]
+
+
+def test_button_links_to_article():
+    from bot import discord
+
+    payload, _ = discord.build_messages([make_item(7)], threshold=5)[0]
+    assert payload["components"] == [
+        {"type": 1, "components": [{"type": 2, "style": 5, "label": "อ่านข่าว", "url": "https://example.test/7"}]}
+    ]
+
+
+def test_status_button_label():
+    from bot import discord
+
+    payload, _ = discord.build_messages([make_item(7, kind="status")], threshold=5)[0]
+    assert [(b["label"], b["url"]) for b in buttons(payload)] == [("ดูสถานะ", "https://example.test/7")]
+
+
+def test_batch_buttons_follow_item_kinds():
+    from bot import discord
+
+    news_only, _ = discord.build_messages([make_item(i) for i in range(6)], threshold=5)[0]
+    assert [b["label"] for b in buttons(news_only)] == ["Comm-Link ทั้งหมด"]
+    assert buttons(news_only)[0]["url"] == "https://robertsspaceindustries.com/comm-link"
+
+    status_only, _ = discord.build_messages([make_item(i, kind="status") for i in range(6)], threshold=5)[0]
+    assert [b["label"] for b in buttons(status_only)] == ["หน้าสถานะ"]
+    assert buttons(status_only)[0]["url"] == "https://status.robertsspaceindustries.com/"
+
+    mixed = [make_item(i) for i in range(5)] + [make_item(9, kind="status")]
+    both, _ = discord.build_messages(mixed, threshold=5)[0]
+    assert [b["label"] for b in buttons(both)] == ["Comm-Link ทั้งหมด", "หน้าสถานะ"]
+
+
+def test_overlong_url_has_no_button():
+    from bot import discord
+
+    item = make_item(7)
+    item.url = "https://example.test/" + "a" * 600
+    payload, _ = discord.build_messages([item], threshold=5)[0]
+    assert "components" not in payload
+    assert len(payload["embeds"]) == 1
+
+
+def test_send_asks_for_components(server, monkeypatch):
+    from bot import discord
+
+    monkeypatch.setenv("BOT_RETRY_BACKOFF", "0")
+    server.route(WEBHOOK, (204, {}, b""))
+    discord.send(server.base + WEBHOOK, {"embeds": []})
+    assert "with_components=true" in server.posts(WEBHOOK)[0]["full_path"]
+
+
 def test_redact_removes_webhook_urls(monkeypatch):
     from bot import feeds
 

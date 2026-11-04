@@ -12,6 +12,12 @@ MAX_EMBEDS = 10
 MAX_TOTAL = 6000
 MAX_429 = 5
 MAX_WAIT = 60
+MAX_URL = 512
+BUTTON_LABELS = {"commlink": "อ่านข่าว", "status": "ดูสถานะ"}
+HUB_BUTTONS = {
+    "commlink": ("Comm-Link ทั้งหมด", "https://robertsspaceindustries.com/comm-link"),
+    "status": ("หน้าสถานะ", "https://status.robertsspaceindustries.com/"),
+}
 
 
 class DiscordError(Exception):
@@ -47,18 +53,31 @@ def _batch_embed(items):
     return {"title": f"ข่าวใหม่ {len(items)} รายการ", "description": "\n".join(lines), "color": color}
 
 
-def _payload(embed, mention):
+def _link_button(label, url):
+    return {"type": 2, "style": 5, "label": label, "url": url}
+
+
+def _payload(embed, mention, buttons):
     payload = {"embeds": [embed], "allowed_mentions": {"parse": ["roles"] if mention else []}}
     if mention:
         payload["content"] = mention
+    # Discord rejects the whole message over one bad button, so an overlong URL only loses its button.
+    usable = [b for b in buttons if len(b["url"]) <= MAX_URL]
+    if usable:
+        payload["components"] = [{"type": 1, "components": usable}]
     return payload
 
 
 def build_messages(items, threshold, mention=""):
     """Returns (payload, items covered) pairs. Above the threshold everything becomes one message."""
     if len(items) > threshold:
-        return [(_payload(_batch_embed(items), mention), list(items))]
-    return [(_payload(build_embed(item), mention), [item]) for item in items]
+        kinds = {item.kind for item in items}
+        hubs = [_link_button(*hub) for kind, hub in HUB_BUTTONS.items() if kind in kinds]
+        return [(_payload(_batch_embed(items), mention, hubs), list(items))]
+    return [
+        (_payload(build_embed(item), mention, [_link_button(BUTTON_LABELS[item.kind], item.url)]), [item])
+        for item in items
+    ]
 
 
 def _retry_after(response):
@@ -79,7 +98,10 @@ def send(url, payload):
     limited = 0
     while True:
         try:
-            response = requests.request("POST", url, json=payload, timeout=feeds.TIMEOUT)
+            # Without with_components, Discord silently drops buttons sent through a plain webhook.
+            response = requests.request(
+                "POST", url, params={"with_components": "true"}, json=payload, timeout=feeds.TIMEOUT
+            )
         except requests.RequestException as exc:
             problem = type(exc).__name__
         else:
