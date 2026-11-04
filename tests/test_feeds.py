@@ -18,7 +18,9 @@ def test_commlink_parses_real_fixture():
     assert first.kind == "commlink"
     assert first.title == "This Week in Star Citizen"
     assert first.url == "https://robertsspaceindustries.com/en/comm-link/transmission/21431-This-Week-In-Star-Citizen"
-    assert first.description.startswith("xē'suelen nyahyan, hello everyone,\nLast week, Alpha 4.10.3")
+    assert first.description.startswith("Last week, Alpha 4.10.3")
+    assert first.category == "Transmission"
+    assert first.compact is False
     assert "หมวด" not in first.description
     assert "วันที่" not in first.description
     assert first.timestamp == datetime(2026, 11, 2, 20, 0, tzinfo=timezone.utc)
@@ -50,6 +52,36 @@ def test_summary_cleans_text(title, text, expected):
     assert sc_commlink.summarize(text, title) == expected
 
 
+@pytest.mark.parametrize(
+    "title,text,expected",
+    [
+        ("Roadmap Roundup - October 21, 2026", "Roadmap Roundup Hello everyone!\n\nEvery two weeks, we explain changes.", "Every two weeks, we explain changes."),
+        ("This Week", "This Week xē'suelen nyahyan, hello everyone,\nLast week was busy.", "Last week was busy."),
+        ("Winners", "The Discover the ship Community Highlights View more on Community Hub By Results\n\nWe have a CHAMPION!", "We have a CHAMPION!"),
+    ],
+    ids=["dated-title-and-greeting", "greeting-after-name", "web-menu-line"],
+)
+def test_summary_removes_clutter_seen_in_real_articles(title, text, expected):
+    from bot.feeds import sc_commlink
+
+    assert sc_commlink.summarize(text, title) == expected
+
+
+def test_summary_without_a_sentence_is_empty():
+    from bot.feeds import sc_commlink
+
+    assert sc_commlink.summarize("Heading Only Words Here", "Title") == ""
+
+
+def test_summary_ends_at_a_full_sentence():
+    from bot.feeds import sc_commlink
+
+    text = "First sentence is here. " + "Second sentence keeps going on. " * 8 + "x" * 200
+    summary = sc_commlink.summarize(text, "Title")
+    assert len(summary) <= 300
+    assert summary.endswith("going on.")
+
+
 def test_summary_is_limited_at_a_word_boundary():
     from bot.feeds import sc_commlink
 
@@ -63,6 +95,30 @@ def test_summary_empty_when_nothing_remains(text):
     from bot.feeds import sc_commlink
 
     assert sc_commlink.summarize(text, "Title") == ""
+
+
+def row(**changes):
+    base = {"id": 7, "title": "R-PU-ORS-Pistol-1", "rsi_url": "https://example.test/promo", "channel": "Undefined",
+            "images_count": 0, "translations": None, "created_at": "2026-11-02T20:00:00+00:00"}
+    return {**base, **changes}
+
+
+@pytest.mark.parametrize(
+    "changes,compact,category",
+    [
+        ({}, True, None),
+        ({"translations": {"en_EN": "A real article body."}}, False, None),
+        ({"images_count": 3}, False, None),
+        ({"channel": "Transmission"}, False, "Transmission"),
+    ],
+    ids=["promo", "has-text", "has-images", "has-category"],
+)
+def test_compact_only_without_category_text_or_images(changes, compact, category):
+    from bot.feeds import sc_commlink
+
+    item = sc_commlink.parse({"data": [row(**changes)]}, TZ)[0]
+    assert item.compact is compact
+    assert item.category == category
 
 
 def test_commlink_without_text_has_empty_description():

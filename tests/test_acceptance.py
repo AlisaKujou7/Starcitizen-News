@@ -370,7 +370,8 @@ def test_fr14_card_shows_summary_instead_of_category_and_date(bot, server):
     result = bot.run()
     assert result.returncode == 0, result.stderr
     embed = json.loads(server.posts()[0]["body"])["embeds"][0]
-    assert embed["description"].startswith("xē'suelen nyahyan")
+    assert embed["description"].startswith("Last week, Alpha 4.10.3")
+    assert embed["footer"] == {"text": "Transmission"}
     assert "หมวด" not in embed["description"]
     assert "วันที่" not in embed["description"]
     assert embed["timestamp"].startswith("2026-11-02T20:00:00")
@@ -392,6 +393,66 @@ def test_fr14_status_card_is_unchanged(bot, server):
     bot.forget("sc_status", STATUS_ID)
     bot.run()
     assert json.loads(server.posts()[0]["body"])["embeds"][0]["description"] == "สถานะ: Resolved\nเวลาเริ่ม: 2026-10-21 21:30 น."
+
+
+def payload_with(*rows):
+    return json.dumps({"data": list(rows)}).encode()
+
+
+def news_row(item_id, **changes):
+    base = json.loads(commlink_payload([item_id]))["data"][0]
+    return {**base, **changes}
+
+
+def test_r4_request_asks_for_newest_by_date(bot, server):
+    bot.run()
+    assert "sort=-created_at" in server.gets("/commlink")[0]["full_path"]
+
+
+def test_r4_recent_article_with_an_old_id_is_sent(bot, server):
+    server.route("/commlink", (200, {}, commlink_payload([100, 101])))
+    bot.run()
+    server.route("/commlink", (200, {}, commlink_payload([99, 100, 101])))
+    result = bot.run()
+    assert result.returncode == 0, result.stderr
+    assert json.loads(server.posts()[0]["body"])["embeds"][0]["title"] == "Article 99"
+
+
+def test_r4_old_article_entering_the_page_is_not_sent(bot, server):
+    server.route("/commlink", (200, {}, commlink_payload([100])))
+    bot.run()
+    old = news_row(50, created_at="2026-09-01T00:00:00+00:00")
+    server.route("/commlink", (200, {}, payload_with(news_row(100), old)))
+    bot.run()
+    assert server.all_posts() == []
+
+
+def test_fr16_giveaway_gets_a_compact_card_without_opening_the_page(bot, server):
+    server.route("/commlink", (200, {}, commlink_payload([100])))
+    bot.run()
+    promo = news_row(101, title="R-PU-ORS-Pistol-1", channel="Undefined", images_count=0,
+                     rsi_url=f"{server.base}/article/promo")
+    server.route("/commlink", (200, {}, payload_with(news_row(100), promo)))
+    server.route("/article/promo", (200, {}, COVER_PAGE))
+    bot.run()
+    body = json.loads(server.posts()[0]["body"])
+    assert set(body["embeds"][0]) == {"title", "url", "color"}
+    assert body["embeds"][0]["title"] == "R-PU-ORS-Pistol-1"
+    assert body["components"][0]["components"][0]["label"] == "เพิ่มเติม"
+    assert server.gets("/article/promo") == []
+    assert "101" in bot.state()["feeds"]["sc_commlink"]["seen"]
+
+
+def test_fr16_undefined_article_with_text_keeps_the_full_card(bot, server):
+    server.route("/commlink", (200, {}, commlink_payload([100])))
+    bot.run()
+    article = news_row(101, channel="Undefined", images_count=4, translations={"en_EN": "We have a winner."})
+    server.route("/commlink", (200, {}, payload_with(news_row(100), article)))
+    bot.run()
+    body = json.loads(server.posts()[0]["body"])
+    assert body["embeds"][0]["description"] == "We have a winner."
+    assert "footer" not in body["embeds"][0]
+    assert body["components"][0]["components"][0]["label"] == "อ่านเพิ่มเติม"
 
 
 def test_d2_keepalive_check_command(bot):

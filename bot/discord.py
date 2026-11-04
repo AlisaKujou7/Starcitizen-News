@@ -13,7 +13,8 @@ MAX_TOTAL = 6000
 MAX_429 = 5
 MAX_WAIT = 60
 MAX_URL = 512
-BUTTON_LABELS = {"commlink": "อ่านข่าว", "status": "ดูสถานะ"}
+BUTTON_LABELS = {"commlink": "อ่านเพิ่มเติม", "status": "ดูสถานะ"}
+COMPACT_BUTTON_LABEL = "เพิ่มเติม"
 HUB_BUTTONS = {
     "commlink": ("Comm-Link ทั้งหมด", "https://robertsspaceindustries.com/comm-link"),
     "status": ("หน้าสถานะ", "https://status.robertsspaceindustries.com/"),
@@ -30,6 +31,10 @@ def build_embed(item):
         "url": item.url,
         "color": COLORS[item.kind],
     }
+    if item.compact:
+        return embed
+    if item.category:
+        embed["footer"] = {"text": item.category}  # Discord shows footer text just before the timestamp
     if item.description:
         embed["description"] = item.description[:MAX_DESCRIPTION]
     if item.timestamp:
@@ -54,6 +59,10 @@ def _batch_embed(items):
     return {"title": f"ข่าวใหม่ {len(items)} รายการ", "description": "\n".join(lines), "color": color}
 
 
+def _button_label(item):
+    return COMPACT_BUTTON_LABEL if item.compact else BUTTON_LABELS[item.kind]
+
+
 def _link_button(label, url):
     return {"type": 2, "style": 5, "label": label, "url": url}
 
@@ -76,7 +85,7 @@ def build_messages(items, threshold, mention=""):
         hubs = [_link_button(*hub) for kind, hub in HUB_BUTTONS.items() if kind in kinds]
         return [(_payload(_batch_embed(items), mention, hubs), list(items))]
     return [
-        (_payload(build_embed(item), mention, [_link_button(BUTTON_LABELS[item.kind], item.url)]), [item])
+        (_payload(build_embed(item), mention, [_link_button(_button_label(item), item.url)]), [item])
         for item in items
     ]
 

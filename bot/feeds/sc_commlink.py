@@ -11,29 +11,51 @@ COVER_BUDGET = 60
 MAX_SUMMARY = 300
 MARKUP = re.compile(r"h[1-6]", re.IGNORECASE)
 SITE_NAME = re.compile(r"\s*\|\s*Star Citizen\s*$|^\s*Star Citizen\s*\|\s*", re.IGNORECASE)
+GREETING = re.compile(r"^[^.!?]*?\b(?:hello|hi|greetings)[ ,]+(?:everyone|citizens|all)\b[,!.:]*\s*", re.IGNORECASE)
+SENTENCE_END = re.compile(r"[.!?…](?=\s|$)")
+WEB_MENU = ("Discover the ship", "Community Highlights", "View more on Community Hub")
+UNDEFINED = "Undefined"
 META_TAG = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
 OG_IMAGE = re.compile(r"""property\s*=\s*["']og:image["']""", re.IGNORECASE)
 CONTENT = re.compile(r"""content\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE)
 
 
 def summarize(text, title):
-    """The opening of an article, without leftover file names, markup or the repeated title."""
+    """The opening of an article, without file names, markup, site menus, the repeated title or a greeting.
+
+    No summary is better than a messy one, so text with no complete sentence gives an empty result.
+    """
     if not isinstance(text, str):
         return ""
     lines = []
     for line in text.splitlines():
         words = [w for w in line.split() if "_" not in w and not MARKUP.fullmatch(w)]
-        if words:
-            lines.append(" ".join(words))
+        cleaned = " ".join(words)
+        if cleaned and not any(phrase in cleaned for phrase in WEB_MENU):
+            lines.append(cleaned)
+    if not lines:
+        return ""
     base = SITE_NAME.sub("", title)
-    if lines and lines[0].lower().startswith(base.lower()):
-        lines[0] = lines[0][len(base):].strip()
-        if not lines[0]:
-            lines.pop(0)
-    summary = "\n".join(lines)
+    for prefix in (base, base.split(" - ")[0]):  # a title may carry a date the article's first line does not
+        if prefix and lines[0].lower().startswith(prefix.lower()):
+            lines[0] = lines[0][len(prefix):].strip()
+            break
+    lines[0] = GREETING.sub("", lines[0]).strip()
+    summary = "\n".join(line for line in lines if line)
     if len(summary) > MAX_SUMMARY:
-        summary = summary[:MAX_SUMMARY - 1].rsplit(None, 1)[0] + "…"
+        summary = _shorten(summary)
+    if not SENTENCE_END.search(summary):
+        return ""
     return summary
+
+
+def _shorten(summary):
+    """End on a complete sentence when one fits, otherwise on a whole word."""
+    cut = summary[:MAX_SUMMARY]
+    ends = list(SENTENCE_END.finditer(cut))
+    if ends:
+        return cut[:ends[-1].end()]
+    return summary[:MAX_SUMMARY - 1].rsplit(None, 1)[0] + "…"
 
 
 def parse(body, tz):
@@ -49,6 +71,9 @@ def parse(body, tz):
             text = (row.get("translations") or {}).get("en_EN")
         except (KeyError, TypeError, ValueError, AttributeError) as exc:
             raise FeedError(f"sc_commlink: รูปแบบข้อมูลเปลี่ยน ({type(exc).__name__})") from None
+        summary = summarize(text, title)
+        channel = row.get("channel")
+        category = channel if channel and channel != UNDEFINED else None
         items.append(
             Item(
                 id=str(item_id),
@@ -56,9 +81,11 @@ def parse(body, tz):
                 kind="commlink",
                 title=title,
                 url=url,
-                description=summarize(text, title),
+                description=summary,
                 timestamp=moment,
                 image=None,
+                category=category,
+                compact=not category and not summary and not row.get("images_count"),
             )
         )
     return items
@@ -91,7 +118,8 @@ def add_covers(items, budget=COVER_BUDGET, clock=time.monotonic):
 
 def fetch(url, tz):
     response = request_with_retry(
-        "GET", url, params={"page[size]": PAGE_SIZE}, headers={"Accept": "application/json"}
+        # By date, not id: event pages can be published long after their id was created.
+        "GET", url, params={"page[size]": PAGE_SIZE, "sort": "-created_at"}, headers={"Accept": "application/json"}
     )
     try:
         body = response.json()

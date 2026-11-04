@@ -1,7 +1,7 @@
 schedule_minutes: 30 # keep in step with the cron line in .github/workflows/notify.yml
 timezone: Asia/Bangkok
 batch_threshold: 5
-role_mention: "" # for example "<@&ROLE_ID>" to ping one role
+role_mention: "<@&1567446930320138280>" # the role pinged on every message; "" turns it off
 
 sources:
   sc_commlink: https://api.star-citizen.wiki/api/comm-links

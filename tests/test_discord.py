@@ -209,8 +209,35 @@ def test_button_links_to_article():
 
     payload, _ = discord.build_messages([make_item(7)], threshold=5)[0]
     assert payload["components"] == [
-        {"type": 1, "components": [{"type": 2, "style": 5, "label": "อ่านข่าว", "url": "https://example.test/7"}]}
+        {"type": 1, "components": [{"type": 2, "style": 5, "label": "อ่านเพิ่มเติม", "url": "https://example.test/7"}]}
     ]
+
+
+def test_compact_card_has_only_title_and_more_button():
+    from bot import discord
+
+    item = make_item(7, description="", image="https://example.test/i.jpg")
+    item.compact = True
+    item.category = "Transmission"
+    payload, _ = discord.build_messages([item], threshold=5)[0]
+    assert set(payload["embeds"][0]) == {"title", "url", "color"}
+    assert [b["label"] for b in buttons(payload)] == ["เพิ่มเติม"]
+
+
+def test_category_goes_in_the_footer_beside_the_date():
+    from bot import discord
+
+    item = make_item(7)
+    item.category = "Transmission"
+    embed = discord.build_embed(item)
+    assert embed["footer"] == {"text": "Transmission"}
+    assert embed["timestamp"].startswith("2026-11-02T20:00:00")
+
+
+def test_no_category_means_no_footer():
+    from bot import discord
+
+    assert "footer" not in discord.build_embed(make_item(7))
 
 
 def test_status_button_label():

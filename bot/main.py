@@ -31,8 +31,13 @@ def show(tag, payload):
     log(f"{tag} {json.dumps(payload, ensure_ascii=False)}")
 
 
+def current_time():
+    fixed = os.environ.get("BOT_NOW")  # tests pin the clock, so fixtures never age out of the 14-day window
+    return datetime.fromisoformat(fixed) if fixed else datetime.now(timezone.utc)
+
+
 def add_covers(items):
-    sc_commlink.add_covers([i for i in items if i.kind == "commlink"])
+    sc_commlink.add_covers([i for i in items if i.kind == "commlink" and not i.compact])
 
 
 def collect(config, data, dry_run):
@@ -58,7 +63,7 @@ def collect(config, data, dry_run):
                 state.bootstrap(data, name, items)
                 log(f"{name}: รอบแรก บันทึก {len(items)} รายการโดยไม่ส่ง")
             continue
-        found = state.new_items(data, name, items)
+        found = state.new_items(data, name, items, now=current_time())
         log(f"{name}: ของใหม่ {len(found)} รายการ")
         pending.setdefault(settings["webhook"], []).extend(found)
     return pending

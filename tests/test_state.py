@@ -1,8 +1,10 @@
 """T1: state.json rules. Imports live inside tests so each test fails on its own before the code exists."""
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
+
+NOW = datetime(2026, 11, 4, 12, tzinfo=timezone.utc)
 
 
 def make_item(item_id):
@@ -75,25 +77,37 @@ def test_new_items_only_unseen():
 
     data = {"version": 1, "feeds": {}}
     state.bootstrap(data, "sc_commlink", [make_item(10), make_item(11)])
-    found = state.new_items(data, "sc_commlink", [make_item(10), make_item(11), make_item(12)])
+    found = state.new_items(data, "sc_commlink", [make_item(10), make_item(11), make_item(12)], now=NOW)
     assert [i.id for i in found] == ["12"]
 
 
-def test_older_id_below_floor_is_not_new():
+def test_older_id_with_a_recent_date_is_new():
     from bot import state
 
     data = {"version": 1, "feeds": {}}
     state.bootstrap(data, "sc_commlink", [make_item(10), make_item(11)])
-    assert state.new_items(data, "sc_commlink", [make_item(9), make_item(10)]) == []
+    assert [i.id for i in state.new_items(data, "sc_commlink", [make_item(9), make_item(10)], now=NOW)] == ["9"]
 
 
-def test_non_numeric_ids_have_no_floor():
+@pytest.mark.parametrize("age_days,expected", [(13, True), (14, True), (15, False)])
+def test_unseen_item_must_be_recent(age_days, expected):
     from bot import state
 
-    data = {"version": 1, "feeds": {"sc_status": {"seen": ["https://a/2"], "failing_since": None}}}
-    item = make_item(1)
-    item.id = "https://a/1"
-    assert [i.id for i in state.new_items(data, "sc_status", [item])] == ["https://a/1"]
+    data = {"version": 1, "feeds": {}}
+    state.bootstrap(data, "sc_commlink", [make_item(10)])
+    item = make_item(11)
+    item.timestamp = NOW - timedelta(days=age_days)
+    assert bool(state.new_items(data, "sc_commlink", [item], now=NOW)) is expected
+
+
+def test_item_without_a_date_counts_as_recent():
+    from bot import state
+
+    data = {"version": 1, "feeds": {}}
+    state.bootstrap(data, "sc_commlink", [make_item(10)])
+    item = make_item(11)
+    item.timestamp = None
+    assert state.new_items(data, "sc_commlink", [item], now=NOW) == [item]
 
 
 def test_mark_sent_adds_id_once():

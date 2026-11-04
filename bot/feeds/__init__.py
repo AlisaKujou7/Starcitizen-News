@@ -28,6 +28,8 @@ class Item:
     description: str
     timestamp: Optional[datetime]
     image: Optional[str]
+    category: Optional[str] = None
+    compact: bool = False  # nothing but a title and a link, such as a game code giveaway
 
 
 def redact(text):

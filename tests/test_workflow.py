@@ -85,6 +85,7 @@ def test_config_matches_requirement():
     cfg = config()
     assert cfg["timezone"] == "Asia/Bangkok"
     assert cfg["batch_threshold"] == 5
+    assert cfg["role_mention"] == "<@&1567446930320138280>"
     assert set(cfg["feeds"]) == {"sc_commlink", "sc_status"}
     assert all(f["enabled"] is True and f["webhook"] == "SC_WEBHOOK" for f in cfg["feeds"].values())
     assert cfg["sources"]["sc_commlink"] == "https://api.star-citizen.wiki/api/comm-links"

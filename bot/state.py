@@ -1,9 +1,11 @@
 """Read and write state.json: which items were already announced, per feed."""
 import json
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 KEEPALIVE_DAYS = 50
+MAX_AGE_DAYS = 14
 
 
 class StateError(Exception):
@@ -45,15 +47,14 @@ def bootstrap(data, name, items):
     feed["seen"] = [item.id for item in items]
 
 
-def new_items(data, name, items):
+def new_items(data, name, items, now=None, max_age_days=MAX_AGE_DAYS):
+    now = now or datetime.now(timezone.utc)
     seen = set(_feed(data, name)["seen"])
-    numeric = [int(i) for i in seen if i.isdigit()]
-    floor = min(numeric) if numeric and len(numeric) == len(seen) else None
     found = []
     for item in items:
         if item.id in seen:
             continue
-        if floor is not None and item.id.isdigit() and int(item.id) < floor:
+        if item.timestamp and now - item.timestamp > timedelta(days=max_age_days):
             continue  # an old article reappearing on the first page is not news
         found.append(item)
     return found

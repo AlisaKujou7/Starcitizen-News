@@ -131,6 +131,7 @@ class Bot:
         self.config_path.write_text(yaml.safe_dump(self.config), encoding="utf-8")
         env = {k: v for k, v in os.environ.items() if k != "SC_WEBHOOK"}
         env["BOT_RETRY_BACKOFF"] = "0"
+        env["BOT_NOW"] = "2026-11-04T12:00:00+00:00"  # fixed, so the 14-day rule never expires a fixture
         if webhook is not None:
             env["SC_WEBHOOK"] = self.webhook if webhook == "default" else webhook
         return subprocess.run(
