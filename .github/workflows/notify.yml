@@ -2,7 +2,7 @@ name: notify
 
 on:
   schedule:
-    - cron: "*/5 * * * *" # off the hour, when GitHub's scheduler is less congested
+    - cron: "7,37 * * * *" # off the hour, when GitHub's scheduler is less congested
   workflow_dispatch:
 
 permissions:
