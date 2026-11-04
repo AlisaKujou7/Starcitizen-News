@@ -31,11 +31,12 @@
         "21325",
         "21324",
         "21323",
-        "21431"
+        "21431",
+        "21423"
       ]
     },
     "sc_status": {
-      "failing_since": "2026-11-04T07:41:12.332974+00:00",
+      "failing_since": null,
       "seen": [
         "https://status.robertsspaceindustries.com/issues/2026-10-21_rsi-platform-maintenance/",
         "https://status.robertsspaceindustries.com/issues/2026-10-11_live-services-disruption/",
