@@ -224,6 +224,32 @@ def test_compact_card_has_only_title_and_more_button():
     assert [b["label"] for b in buttons(payload)] == ["เพิ่มเติม"]
 
 
+VIDEO = "https://www.youtube.com/watch?v=zNL_FgoTrjA"
+
+
+def test_video_follows_the_card_as_a_plain_link():
+    from bot import discord
+
+    item = make_item(7)
+    item.video = VIDEO
+    messages = discord.build_messages([item], threshold=5, mention="<@&42>")
+    assert len(messages) == 2
+    card, covered = messages[0]
+    assert card["content"] == "<@&42>"
+    assert covered == [item]
+    link, covered = messages[1]
+    assert link == {"content": VIDEO, "allowed_mentions": {"parse": []}}
+    assert covered == []
+
+
+def test_batch_has_no_video_message():
+    from bot import discord
+
+    items = [make_item(i) for i in range(6)]
+    items[0].video = VIDEO
+    assert len(discord.build_messages(items, threshold=5)) == 1
+
+
 def test_category_goes_in_the_footer_beside_the_date():
     from bot import discord
 

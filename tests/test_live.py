@@ -35,6 +35,17 @@ def test_live_article_page_has_a_cover():
     assert cover and cover.startswith("https://")
 
 
+def test_live_api_still_returns_links():
+    import requests
+
+    from bot.feeds import sc_commlink
+
+    response = requests.get(
+        cfg()["sources"]["sc_commlink"], params=sc_commlink.QUERY, headers={"Accept": "application/json"}, timeout=30
+    )
+    assert isinstance(response.json()["data"][0]["links"], list)
+
+
 def test_live_latest_article_has_a_summary():
     from bot.feeds import sc_commlink
 

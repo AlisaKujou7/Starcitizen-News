@@ -122,6 +122,32 @@ def test_compact_only_without_category_text_or_images(changes, compact, category
     assert item.category == category
 
 
+YT = "https://www.youtube.com/watch?v=zNL_FgoTrjA"
+
+
+@pytest.mark.parametrize(
+    "links,expected",
+    [
+        ([{"href": YT, "text": "x"}], YT),
+        ([{"href": "https://youtu.be/zNL_FgoTrjA"}], "https://youtu.be/zNL_FgoTrjA"),
+        ([{"href": YT}, {"href": "https://robertsspaceindustries.com/community-hub"}], YT),
+        ([{"href": YT}, {"href": YT}], YT),
+        ([{"href": YT}, {"href": "https://www.youtube.com/watch?v=d8Qt8YA-Uco"}], None),
+        ([{"href": "https://robertsspaceindustries.com/community-hub"}], None),
+        ([{"href": "https://youtube.com.evil.test/watch?v=zNL_FgoTrjA"}], None),
+        ([{"href": "http://www.youtube.com/watch?v=zNL_FgoTrjA"}], None),
+        ([], None),
+        (None, None),
+    ],
+    ids=["one", "short-form", "with-other-link", "duplicate", "two-videos", "not-video", "lookalike", "not-https", "empty", "missing"],
+)
+def test_video_only_when_exactly_one_youtube_link(links, expected):
+    from bot.feeds import sc_commlink
+
+    item = sc_commlink.parse({"data": [row(channel="Transmission", links=links)]}, TZ)[0]
+    assert item.video == expected
+
+
 def test_commlink_without_text_has_empty_description():
     from bot.feeds import sc_commlink
 

@@ -84,10 +84,14 @@ def build_messages(items, threshold, mention=""):
         kinds = {item.kind for item in items}
         hubs = [_link_button(*hub) for kind, hub in HUB_BUTTONS.items() if kind in kinds]
         return [(_payload(_batch_embed(items), mention, hubs), list(items))]
-    return [
-        (_payload(build_embed(item), mention, [_link_button(_button_label(item), item.url)]), [item])
-        for item in items
-    ]
+    messages = []
+    for item in items:
+        messages.append((_payload(build_embed(item), mention, [_link_button(_button_label(item), item.url)]), [item]))
+        if item.video:
+            # A plain link, sent alone, is what makes Discord show a playable video. It covers no item:
+            # the card already announced this one, so losing the link must not send the card again.
+            messages.append(({"content": item.video, "allowed_mentions": {"parse": []}}, []))
+    return messages
 
 
 def _retry_after(response):

@@ -30,6 +30,7 @@ class Item:
     image: Optional[str]
     category: Optional[str] = None
     compact: bool = False  # nothing but a title and a link, such as a game code giveaway
+    video: Optional[str] = None
 
 
 def redact(text):

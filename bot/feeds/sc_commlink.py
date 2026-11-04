@@ -7,6 +7,9 @@ from datetime import datetime
 from bot.feeds import FeedError, Item, request_with_retry
 
 PAGE_SIZE = 30
+# By date, not id: event pages can be published long after their id was created.
+QUERY = {"page[size]": PAGE_SIZE, "sort": "-created_at", "include": "links"}
+YOUTUBE = re.compile(r"https://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)[\w-]{6,}(?:[?&][\w=&%-]*)?")
 COVER_BUDGET = 60
 MAX_SUMMARY = 300
 MARKUP = re.compile(r"h[1-6]", re.IGNORECASE)
@@ -58,6 +61,15 @@ def _shorten(summary):
     return summary[:MAX_SUMMARY - 1].rsplit(None, 1)[0] + "…"
 
 
+def find_video(links):
+    """The article's YouTube link. With several we cannot tell which is the main one, so we use none."""
+    if not isinstance(links, list):
+        return None
+    hrefs = {link.get("href") for link in links if isinstance(link, dict)}
+    videos = [href for href in hrefs if isinstance(href, str) and YOUTUBE.fullmatch(href)]
+    return videos[0] if len(videos) == 1 else None
+
+
 def parse(body, tz):
     rows = body.get("data") if isinstance(body, dict) else None
     if not isinstance(rows, list) or not rows:
@@ -86,6 +98,7 @@ def parse(body, tz):
                 image=None,
                 category=category,
                 compact=not category and not summary and not row.get("images_count"),
+                video=find_video(row.get("links")),
             )
         )
     return items
@@ -117,10 +130,7 @@ def add_covers(items, budget=COVER_BUDGET, clock=time.monotonic):
 
 
 def fetch(url, tz):
-    response = request_with_retry(
-        # By date, not id: event pages can be published long after their id was created.
-        "GET", url, params={"page[size]": PAGE_SIZE, "sort": "-created_at"}, headers={"Accept": "application/json"}
-    )
+    response = request_with_retry("GET", url, params=QUERY, headers={"Accept": "application/json"})
     try:
         body = response.json()
     except ValueError:

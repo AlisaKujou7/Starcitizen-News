@@ -455,6 +455,59 @@ def test_fr16_undefined_article_with_text_keeps_the_full_card(bot, server):
     assert body["components"][0]["components"][0]["label"] == "อ่านเพิ่มเติม"
 
 
+VIDEO = "https://www.youtube.com/watch?v=zNL_FgoTrjA"
+
+
+def start_with_one_new_video(bot, server):
+    server.route("/commlink", (200, {}, commlink_payload([100])))
+    bot.run()
+    article = news_row(101, links=[{"href": VIDEO}], rsi_url=f"{server.base}/article/video")
+    server.route("/commlink", (200, {}, payload_with(news_row(100), article)))
+    server.route("/article/video", (200, {}, COVER_PAGE))
+
+
+def test_fr18_request_asks_for_links(bot, server):
+    bot.run()
+    assert "include=links" in server.gets("/commlink")[0]["full_path"]
+
+
+def test_fr18_card_then_playable_link_and_no_cover(bot, server):
+    start_with_one_new_video(bot, server)
+    result = bot.run()
+    assert result.returncode == 0, result.stderr
+    posts = [json.loads(p["body"]) for p in server.posts()]
+    assert len(posts) == 2
+    assert posts[0]["embeds"][0]["title"] == "Article 101"
+    assert "image" not in posts[0]["embeds"][0]
+    assert posts[1]["content"] == VIDEO
+    assert "embeds" not in posts[1]
+    assert server.gets("/article/video") == []
+
+
+def test_fr18_failed_link_does_not_resend_the_card(bot, server):
+    start_with_one_new_video(bot, server)
+    server.route(WEBHOOK_PATH, (204, {}, b""), (400, {}, b"bad"))
+    result = bot.run()
+    assert result.returncode == 0, result.stderr
+    assert "::warning" in result.stdout
+    assert "101" in bot.state()["feeds"]["sc_commlink"]["seen"]
+    server.route(WEBHOOK_PATH, (204, {}, b""))
+    server.requests.clear()
+    bot.run()
+    assert server.posts() == []
+
+
+def test_fr18_later_items_still_go_after_a_failed_link(bot, server):
+    server.route("/commlink", (200, {}, commlink_payload([100])))
+    bot.run()
+    first = news_row(101, links=[{"href": VIDEO}], created_at="2026-11-01T00:00:00+00:00")
+    second = news_row(102, created_at="2026-11-02T00:00:00+00:00")
+    server.route("/commlink", (200, {}, payload_with(news_row(100), first, second)))
+    server.route(WEBHOOK_PATH, (204, {}, b""), (400, {}, b"bad"), (204, {}, b""))
+    bot.run()
+    assert "102" in bot.state()["feeds"]["sc_commlink"]["seen"]
+
+
 def test_d2_keepalive_check_command(bot):
     assert bot.run("--keepalive-check", "--last-commit-epoch", "0").stdout.strip() == "due"
     import time
