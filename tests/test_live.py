@@ -1,0 +1,52 @@
+"""T4: read-only checks against the real sources. Nothing here can reach Discord: no webhook is ever set."""
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+import pytest
+import yaml
+
+REPO = Path(__file__).resolve().parents[1]
+pytestmark = pytest.mark.live
+
+
+def cfg():
+    return yaml.safe_load((REPO / "config.yaml").read_text(encoding="utf-8"))
+
+
+def test_live_commlink_parses():
+    from bot import discord
+    from bot.feeds import sc_commlink
+
+    items = sc_commlink.fetch(cfg()["sources"]["sc_commlink"], "Asia/Bangkok")
+    assert len(items) >= 5
+    assert all(i.id.isdigit() and i.title and i.url.startswith("https://") for i in items)
+    assert any(i.image for i in items)
+    assert discord.build_embed(items[0])["title"]
+
+
+def test_live_status_parses():
+    from bot import discord
+    from bot.feeds import sc_status
+
+    items = sc_status.fetch(cfg()["sources"]["sc_status"], "Asia/Bangkok")
+    assert len(items) >= 5
+    assert all(i.id and i.title and i.timestamp for i in items)
+    assert discord.build_embed(items[0])["color"] == 0xE53935
+
+
+def test_live_dry_run_under_two_minutes(tmp_path):
+    env = {k: v for k, v in os.environ.items() if k != "SC_WEBHOOK"}
+    state = tmp_path / "state.json"
+    started = time.monotonic()
+    result = subprocess.run(
+        [sys.executable, "-m", "bot.main", "--dry-run", "--config", "config.yaml", "--state", str(state)],
+        cwd=REPO, env=env, capture_output=True, text=True, timeout=130,
+    )
+    assert time.monotonic() - started < 120
+    assert result.returncode == 0, result.stderr
+    assert "::warning" not in result.stdout
+    assert result.stdout.count("[PREVIEW]") == 2
+    assert not state.exists()

@@ -1,0 +1,53 @@
+{
+  "data": [
+    {
+      "id": 21431,
+      "title": "This Week in Star Citizen",
+      "rsi_url": "https://robertsspaceindustries.com/en/comm-link/transmission/21431-This-Week-In-Star-Citizen",
+      "api_url": "https://api.star-citizen.wiki/api/comm-links/21431",
+      "api_public_url": "https://api.star-citizen.wiki/comm-links/21431",
+      "channel": "Transmission",
+      "category": "Undefined",
+      "series": "None",
+      "images": [
+        {
+          "id": 45645,
+          "name": "storytellers.jpg",
+          "rsi_url": "https://robertsspaceindustries.com/i/cce13e01ae2eb31aa4a0405148782904e8233a97/FxX5caie56yqH8gB9R3Vx2D7fPeuJhsNBBCYyEqECtW8g66PN3VjncDXNjahLWMEoo4eqTggoHfjMtuQQm3i9FYeaiVGbqw3NpNp7rcCuaHt/storytellers.jpg",
+          "mime_type": "image/jpeg"
+        }
+      ],
+      "images_count": 9,
+      "links_count": 7,
+      "comment_count": 0,
+      "created_at": "2026-11-02T20:00:00+00:00",
+      "created_at_human": "1 day ago"
+    },
+    {
+      "id": 21427,
+      "title": "Jump Point Now Available!",
+      "rsi_url": "https://robertsspaceindustries.com/en/comm-link/transmission/21427-Jump-Point-Now-Available",
+      "api_url": "https://api.star-citizen.wiki/api/comm-links/21427",
+      "api_public_url": "https://api.star-citizen.wiki/comm-links/21427",
+      "channel": "Transmission",
+      "category": "Undefined",
+      "series": "None",
+      "images": [
+        {
+          "id": 45671,
+          "name": "jumppoint-logo-v2.webp",
+          "rsi_url": "https://robertsspaceindustries.com/i/e8b4d66599c92f8e089e88ff65fadd7ed682e31f/8SzwQc8j2KJaxT9rCJUPpjPG4egvN8rkhAMCh5mWnUXevhNRr2NjYqS3xvQsd31DUS6e75L6vWAwXzJp6UCXLkacqDyXM5utogjp2CVCAWyCxGqzujC/jumppoint-logo-v2.webp",
+          "mime_type": "image/webp"
+        }
+      ],
+      "images_count": 3,
+      "links_count": 1,
+      "comment_count": 0,
+      "created_at": "2026-10-30T19:00:00+00:00",
+      "created_at_human": "4 days ago"
+    }
+  ],
+  "meta": {
+    "current_page": 1
+  }
+}

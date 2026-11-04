@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+  <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+      
+      <title>RSI Status</title>
+      <link>https://status.robertsspaceindustries.com/</link>
+      <description>Incident history</description>
+      <generator>github.com/cstate</generator>
+      <language>en</language>
+      
+      <lastBuildDate>Wed, 21 Oct 2026 14:30:00 +0000</lastBuildDate>
+      
+      
+      
+        <atom:link href="https://status.robertsspaceindustries.com/index.xml" rel="self" type="application/rss+xml" />
+      
+      
+      
+        <item>
+          <title>[Resolved] RSI Platform Maintenance</title>
+          <link>https://status.robertsspaceindustries.com/issues/2026-10-21_rsi-platform-maintenance/index.html</link>
+          <pubDate>Wed, 21 Oct 2026 14:30:00 +0000</pubDate>
+          <guid>https://status.robertsspaceindustries.com/issues/2026-10-21_rsi-platform-maintenance/</guid>
+          <category>2026-10-22 05:00:00</category>
+          <description>&lt;p&gt;The RSI Platform is currently in an unscheduled maintenance window.&lt;/p&gt;
+&lt;p&gt;During this maintenance window RSI Platform services will see intermittent outages.&lt;/p&gt;
+&lt;p&gt;This should &lt;strong&gt;not&lt;/strong&gt; impact game connectivity.&lt;/p&gt;
+&lt;!-- raw HTML omitted --&gt;
+&lt;p&gt;&lt;strong&gt;[2026-10-22 Updates]&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;0500 UTC - Maintenance Complete&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;[2026-10-21 Updates]&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;1450 UTC - Initial notice, maintenance in-progress&lt;/em&gt;&lt;/p&gt;
+&lt;!-- raw HTML omitted --&gt;
+</description>
+        </item>
+<item>
+          <title>[Resolved] Live Services Disruption</title>
+          <link>https://status.robertsspaceindustries.com/issues/2026-10-11_live-services-disruption/index.html</link>
+          <pubDate>Sun, 11 Oct 2026 15:36:00 +0000</pubDate>
+          <guid>https://status.robertsspaceindustries.com/issues/2026-10-11_live-services-disruption/</guid>
+          <category>2026-10-13 15:25:00</category>
+          <description>&lt;p&gt;The Team has identified the root cause of Hybrid instability and will deploy a fix as soon as possible.&lt;/p&gt;
+&lt;!-- raw HTML omitted --&gt;
+&lt;p&gt;&lt;strong&gt;[2026-10-13 Updates]&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;1525 UTC - Resolving incident after monitoring server stability overnight.&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;[2026-10-12 Updates]&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;1820 UTC - Server Hotfix deployment has begun.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2130 UTC - Server Hotfix deployment complete, Client Hotfix Deployed.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;[2026-10-11 Updates]&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;1536 UTC - Investigation underway.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;1746 UTC - Team has begun work on mitigation.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;1952 UTC - Initial Notice&lt;/em&gt;&lt;/p&gt;
+</description>
+        </item>
+<item>
+          <title>[Resolved] Live Deployment</title>
+          <link>https://status.robertsspaceindustries.com/issues/2026-10-09_live-deployment/index.html</link>
+          <pubDate>Fri, 09 Oct 2026 10:00:00 +0000</pubDate>
+          <guid>https://status.robertsspaceindustries.com/issues/2026-10-09_live-deployment/</guid>
+          <category>2026-10-09 14:00:00</category>
+          <description>&lt;p&gt;The Live Service is currently in maintenance to deploy Star Citizen Alpha 4.10.2.&lt;/p&gt;
+&lt;p&gt;This maintenance window is not expected to exceed 4 hours.&lt;/p&gt;
+&lt;p&gt;New connections to the game have been disabled.&lt;/p&gt;
+&lt;p&gt;Servers will go offline at 1030 UTC.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Players are strongly advised to safely stow their vehicles and equipment before logging off in advance of server shutdown.&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;[2026-10-09 Updates]&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;1000 UTC - Initial Notice, Matchmaking disabled.&lt;/p&gt;
+&lt;p&gt;1400 UTC - 🚀 Star Citizen Alpha 4.10.2-live.12881860 available for download, Servers online.&lt;/p&gt;
+&lt;!-- raw HTML omitted --&gt;
+</description>
+        </item>
+</channel>
+</rss>
