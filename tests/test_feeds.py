@@ -20,7 +20,7 @@ def test_commlink_parses_real_fixture():
     assert first.url == "https://robertsspaceindustries.com/en/comm-link/transmission/21431-This-Week-In-Star-Citizen"
     assert "Transmission" in first.description
     assert first.timestamp == datetime(2026, 11, 2, 20, 0, tzinfo=timezone.utc)
-    assert first.image and first.image.startswith("https://robertsspaceindustries.com/i/")
+    assert first.image is None  # the cover comes from the article page, only when an item is about to be sent
 
 
 def test_commlink_thai_time():
@@ -182,6 +182,77 @@ def test_fetch_uses_http_and_returns_items(server):
     server.route("/s", (200, {}, fixture_bytes("status.xml")))
     assert len(sc_commlink.fetch(server.base + "/c", TZ)) == 2
     assert len(sc_status.fetch(server.base + "/s", TZ)) == 3
+
+
+COVER = "https://cdn.example.test/cover.jpg"
+
+
+@pytest.mark.parametrize(
+    "tag",
+    [
+        f'<meta property="og:image" content="{COVER}">',
+        f'<meta content="{COVER}" property="og:image" />',
+        f"<META PROPERTY='og:image' CONTENT='{COVER}'>",
+    ],
+    ids=["property-first", "content-first", "uppercase-single-quotes"],
+)
+def test_cover_image_reads_og_image(server, tag):
+    from bot.feeds import sc_commlink
+
+    html = f'<html><head><meta property="og:title" content="x">{tag}</head></html>'
+    server.route("/a", (200, {}, html.encode()))
+    assert sc_commlink.cover_image(server.base + "/a") == COVER
+
+
+def test_cover_image_unescapes_entities(server):
+    from bot.feeds import sc_commlink
+
+    server.route("/a", (200, {}, b'<meta property="og:image" content="https://cdn.example.test/c.jpg?a=1&amp;b=2">'))
+    assert sc_commlink.cover_image(server.base + "/a") == "https://cdn.example.test/c.jpg?a=1&b=2"
+
+
+def test_cover_image_none_when_tag_is_missing(server):
+    from bot.feeds import sc_commlink
+
+    server.route("/a", (200, {}, b'<html><meta property="og:title" content="x"></html>'))
+    assert sc_commlink.cover_image(server.base + "/a") is None
+
+
+@pytest.mark.parametrize("bad", ["http://cdn.example.test/c.jpg", "javascript:alert(1)", ""], ids=["http", "script", "empty"])
+def test_cover_image_rejects_anything_but_https(server, bad):
+    from bot.feeds import sc_commlink
+
+    server.route("/a", (200, {}, f'<meta property="og:image" content="{bad}">'.encode()))
+    assert sc_commlink.cover_image(server.base + "/a") is None
+
+
+def test_cover_image_none_when_page_fails(server, monkeypatch):
+    from bot.feeds import sc_commlink
+
+    monkeypatch.setenv("BOT_RETRY_BACKOFF", "0")
+    server.route("/a", (500, {}, b"boom"))
+    assert sc_commlink.cover_image(server.base + "/a") is None
+
+
+def test_add_covers_stops_at_the_time_limit(monkeypatch):
+    from bot.feeds import Item, sc_commlink
+
+    opened = []
+
+    def fake_cover(url):
+        opened.append(url)
+        return COVER
+
+    monkeypatch.setattr(sc_commlink, "cover_image", fake_cover)
+    items = [
+        Item(id=str(i), feed="sc_commlink", kind="commlink", title="t", url=f"https://example.test/{i}",
+             description="d", timestamp=None, image=None)
+        for i in range(3)
+    ]
+    ticks = iter([0, 10, 60, 60, 60, 60])
+    sc_commlink.add_covers(items, budget=60, clock=lambda: next(ticks))
+    assert opened == ["https://example.test/0"]
+    assert [i.image for i in items] == [COVER, None, None]
 
 
 def test_fetch_bad_json_raises(server):

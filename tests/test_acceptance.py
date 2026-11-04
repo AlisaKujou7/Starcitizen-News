@@ -286,6 +286,89 @@ def test_d3_failure_is_visible_and_clears(bot, server):
     assert bot.state()["feeds"]["sc_status"]["failing_since"] is None
 
 
+COVER = "https://cdn.example.test/cover.jpg"
+COVER_PAGE = f'<html><head><meta property="og:image" content="{COVER}"></head></html>'.encode()
+
+
+def articles(server, ids):
+    """A comm-link body whose article pages live on the local server."""
+    body = json.loads(commlink_payload(ids))
+    for row in body["data"]:
+        row["rsi_url"] = f"{server.base}/article/{row['id']}"
+    return json.dumps(body).encode()
+
+
+def start_with_one_new_article(bot, server):
+    server.route("/commlink", (200, {}, articles(server, [100])))
+    bot.run()
+    server.route("/commlink", (200, {}, articles(server, [101, 100])))
+
+
+def test_fr13_message_uses_the_cover_from_the_article_page(bot, server):
+    start_with_one_new_article(bot, server)
+    server.route("/article/101", (200, {}, COVER_PAGE))
+    result = bot.run()
+    assert result.returncode == 0, result.stderr
+    assert json.loads(server.posts()[0]["body"])["embeds"][0]["image"] == {"url": COVER}
+
+
+def test_fr13_failed_cover_still_sends_and_marks(bot, server):
+    start_with_one_new_article(bot, server)
+    server.route("/article/101", (500, {}, b"boom"))
+    result = bot.run()
+    assert result.returncode == 0, result.stderr
+    embed = json.loads(server.posts()[0]["body"])["embeds"][0]
+    assert embed["title"] == "Article 101"
+    assert "image" not in embed
+    assert "101" in bot.state()["feeds"]["sc_commlink"]["seen"]
+
+
+def test_fr13_first_round_opens_no_article_page(bot, server):
+    server.route("/commlink", (200, {}, articles(server, [100, 101])))
+    bot.run()
+    assert server.gets("/article/100") == []
+    assert server.gets("/article/101") == []
+
+
+def test_fr13_batch_opens_no_article_page(bot, server):
+    server.route("/commlink", (200, {}, articles(server, [100])))
+    bot.run()
+    server.route("/commlink", (200, {}, articles(server, range(100, 108))))
+    bot.run()
+    assert len(server.posts()) == 1
+    assert server.gets("/article/101") == []
+
+
+def test_fr13_known_article_page_is_not_reopened(bot, server):
+    start_with_one_new_article(bot, server)
+    server.route("/article/101", (200, {}, COVER_PAGE))
+    bot.run()
+    bot.run()
+    assert len(server.gets("/article/101")) == 1
+
+
+def test_fr13_status_items_have_no_cover(bot, server):
+    bot.run()
+    rss = (
+        '<?xml version="1.0" encoding="utf-8"?><rss version="2.0"><channel><title>RSI Status</title>'
+        f"<item><title>[Resolved] Outage</title><link>{server.base}/article/status</link>"
+        "<pubDate>Wed, 04 Nov 2026 00:00:00 +0000</pubDate><guid>new-incident</guid></item></channel></rss>"
+    )
+    server.route("/status", (200, {}, rss.encode()))
+    server.route("/article/status", (200, {}, COVER_PAGE))
+    bot.run()
+    assert server.gets("/article/status") == []
+    assert "image" not in json.loads(server.posts()[0]["body"])["embeds"][0]
+
+
+def test_fr13_dry_run_shows_the_cover(bot, server):
+    start_with_one_new_article(bot, server)
+    server.route("/article/101", (200, {}, COVER_PAGE))
+    result = bot.run("--dry-run", webhook=None)
+    assert COVER in result.stdout
+    assert server.all_posts() == []
+
+
 def test_d2_keepalive_check_command(bot):
     assert bot.run("--keepalive-check", "--last-commit-epoch", "0").stdout.strip() == "due"
     import time

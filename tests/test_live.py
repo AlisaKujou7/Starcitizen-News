@@ -23,8 +23,16 @@ def test_live_commlink_parses():
     items = sc_commlink.fetch(cfg()["sources"]["sc_commlink"], "Asia/Bangkok")
     assert len(items) >= 5
     assert all(i.id.isdigit() and i.title and i.url.startswith("https://") for i in items)
-    assert any(i.image for i in items)
     assert discord.build_embed(items[0])["title"]
+
+
+def test_live_article_page_has_a_cover():
+    from bot.feeds import sc_commlink
+
+    items = sc_commlink.fetch(cfg()["sources"]["sc_commlink"], "Asia/Bangkok")
+    articles = [i for i in items if not i.title.startswith("R-PU-")]
+    cover = sc_commlink.cover_image(articles[0].url)
+    assert cover and cover.startswith("https://")
 
 
 def test_live_status_parses():

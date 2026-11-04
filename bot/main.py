@@ -31,6 +31,10 @@ def show(tag, payload):
     log(f"{tag} {json.dumps(payload, ensure_ascii=False)}")
 
 
+def add_covers(items):
+    sc_commlink.add_covers([i for i in items if i.kind == "commlink"])
+
+
 def collect(config, data, dry_run):
     """Fetch every enabled feed. One feed failing never stops the others."""
     pending = {}
@@ -48,6 +52,7 @@ def collect(config, data, dry_run):
         if not state.is_bootstrapped(data, name):
             if dry_run:
                 latest = max(items, key=sort_key)
+                add_covers([latest])
                 show(f"[PREVIEW] {name}: รอบจริงจะบันทึก {len(items)} รายการโดยไม่ส่ง ตัวอย่าง:", discord.build_embed(latest))
             else:
                 state.bootstrap(data, name, items)
@@ -63,9 +68,10 @@ def announce(config, data, pending, state_path, dry_run):
     for secret_name, items in pending.items():
         if not items:
             continue
-        messages = discord.build_messages(
-            sorted(items, key=sort_key), config.get("batch_threshold", 5), config.get("role_mention") or ""
-        )
+        threshold = config.get("batch_threshold", 5)
+        if len(items) <= threshold:  # a batched message shows no picture, so no page needs opening
+            add_covers(items)
+        messages = discord.build_messages(sorted(items, key=sort_key), threshold, config.get("role_mention") or "")
         if dry_run:
             for payload, _ in messages:
                 show("[DRY-RUN]", payload)

@@ -1,9 +1,16 @@
 """New Comm-Link articles from the Star Citizen Wiki API."""
+import html
+import re
+import time
 from datetime import datetime
 
 from bot.feeds import FeedError, Item, format_local, request_with_retry
 
 PAGE_SIZE = 30
+COVER_BUDGET = 60
+META_TAG = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
+OG_IMAGE = re.compile(r"""property\s*=\s*["']og:image["']""", re.IGNORECASE)
+CONTENT = re.compile(r"""content\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE)
 
 
 def parse(body, tz):
@@ -18,7 +25,6 @@ def parse(body, tz):
             moment = datetime.fromisoformat(created) if created else None
         except (KeyError, TypeError, ValueError, AttributeError) as exc:
             raise FeedError(f"sc_commlink: รูปแบบข้อมูลเปลี่ยน ({type(exc).__name__})") from None
-        images = row.get("images") or []
         channel = row.get("channel") or "ไม่ระบุ"
         items.append(
             Item(
@@ -29,10 +35,35 @@ def parse(body, tz):
                 url=url,
                 description=f"หมวด: {channel}\nวันที่: {format_local(moment, tz)}",
                 timestamp=moment,
-                image=next((i["rsi_url"] for i in images if isinstance(i, dict) and i.get("rsi_url")), None),
+                image=None,
             )
         )
     return items
+
+
+def cover_image(url):
+    """The article's cover (its og:image). A missing cover must never stop a message, so this returns None."""
+    try:
+        page = request_with_retry("GET", url).text
+    except FeedError:
+        return None
+    for tag in META_TAG.findall(page):
+        if OG_IMAGE.search(tag):
+            found = CONTENT.search(tag)
+            cover = html.unescape((found.group(1) or found.group(2) or "") if found else "")
+            if not cover.startswith("https://"):
+                return None
+            return cover
+    return None
+
+
+def add_covers(items, budget=COVER_BUDGET, clock=time.monotonic):
+    """Open article pages only for items about to be sent. Past the budget, the rest go without a picture."""
+    start = clock()
+    for item in items:
+        if clock() - start >= budget:
+            break
+        item.image = cover_image(item.url)
 
 
 def fetch(url, tz):
