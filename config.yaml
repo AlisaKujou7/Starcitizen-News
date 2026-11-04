@@ -1,0 +1,12 @@
+schedule_minutes: 30 # keep in step with the cron line in .github/workflows/notify.yml
+timezone: Asia/Bangkok
+batch_threshold: 5
+role_mention: "" # for example "<@&ROLE_ID>" to ping one role
+
+sources:
+  sc_commlink: https://api.star-citizen.wiki/api/comm-links
+  sc_status: https://status.robertsspaceindustries.com/index.xml
+
+feeds:
+  sc_commlink: { enabled: true, webhook: SC_WEBHOOK }
+  sc_status: { enabled: true, webhook: SC_WEBHOOK }

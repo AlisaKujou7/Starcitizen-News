@@ -1,0 +1,49 @@
+name: notify
+
+on:
+  schedule:
+    - cron: "7,37 * * * *" # off the hour, when GitHub's scheduler is less congested
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run bot
+        env:
+          SC_WEBHOOK: ${{ secrets.SC_WEBHOOK }}
+        run: python -m bot.main
+
+      - name: Commit state
+        if: ${{ !cancelled() }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update state [skip ci]"
+          elif [ "$(python -m bot.main --keepalive-check --last-commit-epoch "$(git log -1 --format=%ct)")" = "due" ]; then
+            git commit --allow-empty -m "chore: keepalive [skip ci]"
+          else
+            exit 0
+          fi
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push
