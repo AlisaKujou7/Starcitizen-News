@@ -15,6 +15,7 @@ MAX_WAIT = 60
 MAX_URL = 512
 BUTTON_LABELS = {"commlink": "อ่านเพิ่มเติม", "status": "ดูสถานะ"}
 COMPACT_BUTTON_LABEL = "เพิ่มเติม"
+VIDEO_BUTTON_LABEL = "ดูคลิป"
 HUB_BUTTONS = {
     "commlink": ("Comm-Link ทั้งหมด", "https://robertsspaceindustries.com/comm-link"),
     "status": ("หน้าสถานะ", "https://status.robertsspaceindustries.com/"),
@@ -86,11 +87,10 @@ def build_messages(items, threshold, mention=""):
         return [(_payload(_batch_embed(items), mention, hubs), list(items))]
     messages = []
     for item in items:
-        messages.append((_payload(build_embed(item), mention, [_link_button(_button_label(item), item.url)]), [item]))
+        buttons = [_link_button(_button_label(item), item.url)]
         if item.video:
-            # A plain link, sent alone, is what makes Discord show a playable video. It covers no item:
-            # the card already announced this one, so losing the link must not send the card again.
-            messages.append(({"content": item.video, "allowed_mentions": {"parse": []}}, []))
+            buttons.append(_link_button(VIDEO_BUTTON_LABEL, item.video))
+        messages.append((_payload(build_embed(item), mention, buttons), [item]))
     return messages
 
 

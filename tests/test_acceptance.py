@@ -471,41 +471,27 @@ def test_fr18_request_asks_for_links(bot, server):
     assert "include=links" in server.gets("/commlink")[0]["full_path"]
 
 
-def test_fr18_card_then_playable_link_and_no_cover(bot, server):
+def test_fr18_one_card_with_thumbnail_and_video_button(bot, server):
     start_with_one_new_video(bot, server)
     result = bot.run()
     assert result.returncode == 0, result.stderr
     posts = [json.loads(p["body"]) for p in server.posts()]
-    assert len(posts) == 2
+    assert len(posts) == 1
     assert posts[0]["embeds"][0]["title"] == "Article 101"
-    assert "image" not in posts[0]["embeds"][0]
-    assert posts[1]["content"] == VIDEO
-    assert "embeds" not in posts[1]
+    # This suite has no network, so the best image is unreachable and the fallback is used.
+    assert posts[0]["embeds"][0]["image"] == {"url": "https://img.youtube.com/vi/zNL_FgoTrjA/hqdefault.jpg"}
+    assert [b["label"] for b in posts[0]["components"][0]["components"]] == ["อ่านเพิ่มเติม", "ดูคลิป"]
     assert server.gets("/article/video") == []
-
-
-def test_fr18_failed_link_does_not_resend_the_card(bot, server):
-    start_with_one_new_video(bot, server)
-    server.route(WEBHOOK_PATH, (204, {}, b""), (400, {}, b"bad"))
-    result = bot.run()
-    assert result.returncode == 0, result.stderr
-    assert "::warning" in result.stdout
     assert "101" in bot.state()["feeds"]["sc_commlink"]["seen"]
-    server.route(WEBHOOK_PATH, (204, {}, b""))
-    server.requests.clear()
-    bot.run()
-    assert server.posts() == []
 
 
-def test_fr18_later_items_still_go_after_a_failed_link(bot, server):
-    server.route("/commlink", (200, {}, commlink_payload([100])))
+def test_fr18_article_without_video_keeps_its_cover_and_one_button(bot, server):
+    start_with_one_new_article(bot, server)
+    server.route("/article/101", (200, {}, COVER_PAGE))
     bot.run()
-    first = news_row(101, links=[{"href": VIDEO}], created_at="2026-11-01T00:00:00+00:00")
-    second = news_row(102, created_at="2026-11-02T00:00:00+00:00")
-    server.route("/commlink", (200, {}, payload_with(news_row(100), first, second)))
-    server.route(WEBHOOK_PATH, (204, {}, b""), (400, {}, b"bad"), (204, {}, b""))
-    bot.run()
-    assert "102" in bot.state()["feeds"]["sc_commlink"]["seen"]
+    body = json.loads(server.posts()[0]["body"])
+    assert body["embeds"][0]["image"] == {"url": COVER}
+    assert [b["label"] for b in body["components"][0]["components"]] == ["อ่านเพิ่มเติม"]
 
 
 def test_d2_keepalive_check_command(bot):

@@ -37,7 +37,7 @@ def current_time():
 
 
 def add_covers(items):
-    sc_commlink.add_covers([i for i in items if i.kind == "commlink" and not i.compact and not i.video])
+    sc_commlink.add_covers([i for i in items if i.kind == "commlink" and not i.compact])
 
 
 def collect(config, data, dry_run):
@@ -89,9 +89,6 @@ def announce(config, data, pending, state_path, dry_run):
             try:
                 discord.send(url, payload)
             except discord.DiscordError as exc:
-                if not covered:  # only a video link was lost; its card already went out and must not repeat
-                    warn(f"ส่งลิงก์คลิปเข้า {secret_name} ไม่สำเร็จ: {exc}")
-                    continue
                 warn(f"ส่งเข้า {secret_name} ไม่สำเร็จ: {exc} จะลองใหม่รอบถัดไป")
                 break
             for item in covered:

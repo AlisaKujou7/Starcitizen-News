@@ -9,7 +9,8 @@ from bot.feeds import FeedError, Item, request_with_retry
 PAGE_SIZE = 30
 # By date, not id: event pages can be published long after their id was created.
 QUERY = {"page[size]": PAGE_SIZE, "sort": "-created_at", "include": "links"}
-YOUTUBE = re.compile(r"https://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)[\w-]{6,}(?:[?&][\w=&%-]*)?")
+YOUTUBE = re.compile(r"https://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([\w-]{6,})(?:[?&][\w=&%-]*)?")
+THUMBNAILS = "https://img.youtube.com/vi"
 COVER_BUDGET = 60
 MAX_SUMMARY = 300
 MARKUP = re.compile(r"h[1-6]", re.IGNORECASE)
@@ -120,13 +121,24 @@ def cover_image(url):
     return None
 
 
+def video_thumbnail(video):
+    """A video's cover. Not every video has the largest size, and the smaller one always exists."""
+    video_id = YOUTUBE.fullmatch(video).group(1)
+    best = f"{THUMBNAILS}/{video_id}/maxresdefault.jpg"
+    try:
+        request_with_retry("GET", best)
+    except FeedError:
+        return f"{THUMBNAILS}/{video_id}/hqdefault.jpg"
+    return best
+
+
 def add_covers(items, budget=COVER_BUDGET, clock=time.monotonic):
     """Open article pages only for items about to be sent. Past the budget, the rest go without a picture."""
     start = clock()
     for item in items:
         if clock() - start >= budget:
             break
-        item.image = cover_image(item.url)
+        item.image = video_thumbnail(item.video) if item.video else cover_image(item.url)
 
 
 def fetch(url, tz):

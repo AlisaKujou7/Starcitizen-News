@@ -148,6 +148,37 @@ def test_video_only_when_exactly_one_youtube_link(links, expected):
     assert item.video == expected
 
 
+@pytest.mark.parametrize("video", [YT, "https://youtu.be/zNL_FgoTrjA", YT + "&t=30"], ids=["watch", "short", "extra-params"])
+def test_thumbnail_uses_the_best_image_when_available(server, monkeypatch, video):
+    from bot.feeds import sc_commlink
+
+    monkeypatch.setattr(sc_commlink, "THUMBNAILS", server.base + "/vi")
+    server.route("/vi/zNL_FgoTrjA/maxresdefault.jpg", (200, {}, b"image"))
+    assert sc_commlink.video_thumbnail(video) == server.base + "/vi/zNL_FgoTrjA/maxresdefault.jpg"
+
+
+def test_thumbnail_falls_back_when_the_best_image_is_missing(server, monkeypatch):
+    from bot.feeds import sc_commlink
+
+    monkeypatch.setenv("BOT_RETRY_BACKOFF", "0")
+    monkeypatch.setattr(sc_commlink, "THUMBNAILS", server.base + "/vi")
+    server.route("/vi/zNL_FgoTrjA/maxresdefault.jpg", (404, {}, b"none"))
+    assert sc_commlink.video_thumbnail(YT) == server.base + "/vi/zNL_FgoTrjA/hqdefault.jpg"
+
+
+def test_add_covers_uses_the_thumbnail_for_a_video(monkeypatch):
+    from bot.feeds import Item, sc_commlink
+
+    opened = []
+    monkeypatch.setattr(sc_commlink, "cover_image", lambda url: opened.append(url) or "cover")
+    monkeypatch.setattr(sc_commlink, "video_thumbnail", lambda video: "thumb")
+    item = Item(id="1", feed="sc_commlink", kind="commlink", title="t", url="https://example.test/1",
+                description="d", timestamp=None, image=None, video=YT)
+    sc_commlink.add_covers([item])
+    assert item.image == "thumb"
+    assert opened == []
+
+
 def test_commlink_without_text_has_empty_description():
     from bot.feeds import sc_commlink
 

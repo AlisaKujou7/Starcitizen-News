@@ -227,19 +227,20 @@ def test_compact_card_has_only_title_and_more_button():
 VIDEO = "https://www.youtube.com/watch?v=zNL_FgoTrjA"
 
 
-def test_video_follows_the_card_as_a_plain_link():
+def test_video_stays_in_one_card_with_two_buttons():
     from bot import discord
 
     item = make_item(7)
     item.video = VIDEO
     messages = discord.build_messages([item], threshold=5, mention="<@&42>")
-    assert len(messages) == 2
+    assert len(messages) == 1
     card, covered = messages[0]
     assert card["content"] == "<@&42>"
     assert covered == [item]
-    link, covered = messages[1]
-    assert link == {"content": VIDEO, "allowed_mentions": {"parse": []}}
-    assert covered == []
+    assert [(b["label"], b["url"]) for b in buttons(card)] == [
+        ("อ่านเพิ่มเติม", "https://example.test/7"),
+        ("ดูคลิป", VIDEO),
+    ]
 
 
 def test_batch_has_no_video_message():
