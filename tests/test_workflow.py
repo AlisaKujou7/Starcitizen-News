@@ -90,6 +90,7 @@ def test_config_matches_requirement():
     assert all(f["enabled"] is True and f["webhook"] == "SC_WEBHOOK" for f in cfg["feeds"].values())
     assert cfg["sources"]["sc_commlink"] == "https://api.star-citizen.wiki/api/comm-links"
     assert cfg["sources"]["sc_status"] == "https://status.robertsspaceindustries.com/index.xml"
+    assert cfg["sources"]["sc_commlink_rsi"] == "https://robertsspaceindustries.com/api/hub/getCommlinkItems"
 
 
 def test_tests_workflow_runs_offline_suite():

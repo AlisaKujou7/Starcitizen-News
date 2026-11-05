@@ -48,7 +48,9 @@ def collect(config, data, dry_run):
         if not settings.get("enabled"):
             continue
         try:
-            items = FEEDS[name].fetch(config["sources"][name], tz)
+            rsi_url = config["sources"].get(f"{name}_rsi")
+            extra = {"rsi_url": rsi_url, "now": current_time(), "warn": warn} if rsi_url else {}
+            items = FEEDS[name].fetch(config["sources"][name], tz, **extra)
         except Exception as exc:
             warn(f"ฟีด {name} ใช้งานไม่ได้: {exc if str(exc) else type(exc).__name__}")
             state.record_failure(data, name, datetime.now(timezone.utc).isoformat())

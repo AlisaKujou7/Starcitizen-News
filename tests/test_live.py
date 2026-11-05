@@ -35,6 +35,20 @@ def test_live_article_page_has_a_cover():
     assert cover and cover.startswith("https://")
 
 
+def test_live_rsi_list_parses():
+    from datetime import datetime, timezone
+
+    from bot.feeds import sc_commlink
+
+    wiki = cfg()["sources"]["sc_commlink"]
+    rsi = cfg()["sources"]["sc_commlink_rsi"]
+    warnings = []
+    items = sc_commlink.fetch(wiki, "Asia/Bangkok", rsi_url=rsi, now=datetime.now(timezone.utc), warn=warnings.append)
+    assert warnings == []
+    assert len(items) >= 5
+    assert all(i.id.isdigit() and i.title and i.url.startswith("https://") for i in items)
+
+
 def test_live_api_still_returns_links():
     import requests
 

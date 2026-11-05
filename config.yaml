@@ -5,6 +5,7 @@ role_mention: "<@&1567446930320138280>" # the role pinged on every message; "" t
 
 sources:
   sc_commlink: https://api.star-citizen.wiki/api/comm-links
+  sc_commlink_rsi: https://robertsspaceindustries.com/api/hub/getCommlinkItems # finds new articles first
   sc_status: https://status.robertsspaceindustries.com/index.xml
 
 feeds:

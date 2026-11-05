@@ -2,9 +2,27 @@
 import html
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from bot.feeds import FeedError, Item, request_with_retry
+
+RSI_BASE = "https://robertsspaceindustries.com"
+RSI_QUERY = {"channel": "", "series": "", "type": "", "text": "", "sort": "publish_new", "page": 1}
+RSI_BLOCK = re.compile(r'(?=<a class="content-block)')
+RSI_LINK = re.compile(r'href="(/comm-link/([a-z-]+)/(\d+)-[^"]*)"')
+RSI_TITLE = re.compile(r'class="title(?: [^"]*)?">([^<]+)<')  # not "title-holder", which wraps it
+RSI_AGE = re.compile(r'class="value">\s*(\d+)\s+(minute|hour|day|week|month|year)s?\s+ago')
+RSI_IMAGE = re.compile(r"url\('(https://[^']+)'\)")
+RSI_BODY = re.compile(r'class="body">([\s\S]*?)</div>')
+HTML_TAG = re.compile(r"<[^>]+>")
+AGE_UNITS = {
+    "minute": timedelta(minutes=1),
+    "hour": timedelta(hours=1),
+    "day": timedelta(days=1),
+    "week": timedelta(weeks=1),
+    "month": timedelta(days=30),
+    "year": timedelta(days=365),
+}
 
 PAGE_SIZE = 30
 # By date, not id: event pages can be published long after their id was created.
@@ -60,6 +78,51 @@ def _shorten(summary):
     if ends:
         return cut[:ends[-1].end()]
     return summary[:MAX_SUMMARY - 1].rsplit(None, 1)[0] + "…"
+
+
+def parse_rsi(body, now):
+    """RSI's own news list. It sees new articles first, but has no links and only a rough age."""
+    html_list = body.get("data") if isinstance(body, dict) and body.get("success") == 1 else None
+    if not isinstance(html_list, str):
+        raise FeedError("sc_commlink: รายการข่าวของ RSI ใช้ไม่ได้")
+    blocks = [b for b in RSI_BLOCK.split(html_list) if b.startswith("<a class")]
+    if not blocks:
+        raise FeedError("sc_commlink: รายการข่าวของ RSI ไม่มีข่าว")
+    items = []
+    for block in blocks:
+        link, title = RSI_LINK.search(block), RSI_TITLE.search(block)
+        if not (link and title):
+            raise FeedError("sc_commlink: รูปแบบรายการข่าวของ RSI เปลี่ยน")
+        age, image, text = RSI_AGE.search(block), RSI_IMAGE.search(block), RSI_BODY.search(block)
+        summary = " ".join(html.unescape(HTML_TAG.sub(" ", text.group(1))).split()) if text else ""
+        items.append(
+            Item(
+                id=link.group(3),
+                feed="sc_commlink",
+                kind="commlink",
+                title=html.unescape(title.group(1)).strip(),
+                url=RSI_BASE + link.group(1),
+                description=_shorten(summary) if len(summary) > MAX_SUMMARY else summary,
+                timestamp=now - int(age.group(1)) * AGE_UNITS[age.group(2)] if age else None,
+                image=image.group(1) if image else None,
+                category=link.group(2).capitalize(),
+            )
+        )
+    return items
+
+
+def merge(wiki_items, rsi_items):
+    """One item per article: the Wiki's video link and date, with RSI's cleaner summary when it has one."""
+    wiki_by_id = {item.id: item for item in wiki_items}
+    merged = []
+    for rsi_item in rsi_items:
+        wiki_item = wiki_by_id.pop(rsi_item.id, None)
+        if wiki_item is None:
+            merged.append(rsi_item)
+            continue
+        wiki_item.description = rsi_item.description or wiki_item.description
+        merged.append(wiki_item)
+    return merged + list(wiki_by_id.values())
 
 
 def find_video(links):
@@ -138,13 +201,42 @@ def add_covers(items, budget=COVER_BUDGET, clock=time.monotonic):
     for item in items:
         if clock() - start >= budget:
             break
-        item.image = video_thumbnail(item.video) if item.video else cover_image(item.url)
+        item.image = (video_thumbnail(item.video) if item.video else cover_image(item.url)) or item.image
 
 
-def fetch(url, tz):
+def _fetch_wiki(url, tz):
     response = request_with_retry("GET", url, params=QUERY, headers={"Accept": "application/json"})
     try:
         body = response.json()
     except ValueError:
         raise FeedError("sc_commlink: คำตอบไม่ใช่ JSON") from None
     return parse(body, tz)
+
+
+def _fetch_rsi(url, now):
+    response = request_with_retry("POST", url, json=RSI_QUERY, headers={"Accept": "application/json"})
+    try:
+        body = response.json()
+    except ValueError:
+        raise FeedError("sc_commlink: คำตอบของ RSI ไม่ใช่ JSON") from None
+    return parse_rsi(body, now)
+
+
+def fetch(url, tz, rsi_url=None, now=None, warn=print):
+    """Either source alone is enough. Only both failing counts as this feed failing."""
+    if not rsi_url:
+        return _fetch_wiki(url, tz)
+    wiki_items, rsi_items, problems = [], [], []
+    try:
+        wiki_items = _fetch_wiki(url, tz)
+    except FeedError as exc:
+        problems.append(f"Star Citizen Wiki: {exc}")
+    try:
+        rsi_items = _fetch_rsi(rsi_url, now or datetime.now(timezone.utc))
+    except FeedError as exc:
+        problems.append(f"RSI: {exc}")
+    if len(problems) == 2:
+        raise FeedError("; ".join(problems))
+    for problem in problems:
+        warn(f"sc_commlink ใช้แหล่งเดียวรอบนี้ เพราะ {problem}")
+    return merge(wiki_items, rsi_items)
