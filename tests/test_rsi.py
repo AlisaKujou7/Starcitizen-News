@@ -82,13 +82,14 @@ def test_unknown_age_has_no_time():
     [
         {},
         {"success": 0, "data": ""},
+        {"success": 0, "data": rsi_block(5)},
         {"success": 1, "data": ""},
         {"success": 1, "data": "<div>we moved</div>"},
         {"success": 1, "data": '<a class="content-block2" href="/somewhere/else"></a>'},
         {"success": 1, "data": '<a class="content-block2" href="/comm-link/transmission/5-A"></a>'},
         "not a dict",
     ],
-    ids=["empty", "failed", "no-data", "other-html", "other-link", "no-title", "not-dict"],
+    ids=["empty", "failed", "failed-with-data", "no-data", "other-html", "other-link", "no-title", "not-dict"],
 )
 def test_changed_list_raises(body):
     from bot.feeds import FeedError, sc_commlink
